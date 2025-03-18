@@ -16,32 +16,26 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Next.js collects anonymous telemetry data - disable if preferred
+# Set environment variables for build time
+ENV NEXT_PUBLIC_STRAPI_API_URL=http://your-strapi-host:1337
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PUBLIC_SITE_URL=https://your-production-domain.com
 
-# Build the application
+# Build the application with static export
 RUN npm run build
 
 # Production image, copy all the files and run next
-FROM base AS runner
-WORKDIR /app
+FROM nginx:alpine AS runner
+WORKDIR /usr/share/nginx/html
 
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
+# Copy built static files from builder stage
+COPY --from=builder /app/out ./
 
-# Create a non-root user and grant permissions
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-USER nextjs
+# Copy custom nginx config if needed
+# COPY ./nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy built application
-COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+# Expose port 80
+EXPOSE 80
 
-# Expose the port your app runs on
-EXPOSE 3000
-
-# Start the application
-CMD ["npm", "start"] 
+# Start Nginx
+CMD ["nginx", "-g", "daemon off;"] 
