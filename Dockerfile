@@ -26,8 +26,8 @@ ENV NEXT_PUBLIC_STATIC_EXPORT=true
 # Add environment variable to skip data fetching during build
 ENV SKIP_API_CALLS=true
 
-# Build the application with static export
-RUN npm run build && npm run export
+# Build the application
+RUN npm run build
 
 # Production image, copy all the files and run next
 FROM nginx:alpine AS runner
@@ -36,8 +36,8 @@ WORKDIR /usr/share/nginx/html
 # Copy built static files from builder stage
 COPY --from=builder /app/out ./
 
-# Copy custom nginx config
-COPY ./nginx.conf /etc/nginx/conf.d/default.conf
+# Comment out or remove the line for custom nginx config
+# COPY ./nginx.conf /etc/nginx/conf.d/default.conf
 
 # Expose port 80
 EXPOSE 80
