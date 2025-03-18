@@ -6,9 +6,9 @@ FROM base AS deps
 WORKDIR /app
 
 # Copy package files
-COPY package.json package-lock.json* ./
-# Use --legacy-peer-deps to resolve the dependency conflict
-RUN npm ci --legacy-peer-deps
+COPY package.json ./
+# Use npm install instead of npm ci since package-lock.json is out of sync
+RUN npm install --legacy-peer-deps
 
 # Rebuild the source code only when needed
 FROM base AS builder
