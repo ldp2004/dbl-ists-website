@@ -25,19 +25,37 @@ ENV NEXT_PUBLIC_SITE_URL=https://dbl-website-nextjs-dbl.mtgysl.easypanel.host/
 ENV NEXT_PUBLIC_STATIC_EXPORT=true
 # Add environment variable to skip data fetching during build
 ENV SKIP_API_CALLS=true
+# Add environment variable for Strapi URL (found in your utils.ts)
+ENV NEXT_PUBLIC_STRAPI_URL=https://dbl-website-nextjs-dbl.mtgysl.easypanel.host
+
+# Debug the output directory before building
+RUN echo "Building application..." && ls -la
 
 # Build the application
 RUN npm run build
+
+# Debug the output directory after building
+RUN echo "Build completed, checking output directory:" && ls -la && ls -la out || echo "out directory not found, checking .next:" && ls -la .next || echo ".next directory not found"
 
 # Production image, copy all the files and run next
 FROM nginx:alpine AS runner
 WORKDIR /usr/share/nginx/html
 
-# Copy built static files from builder stage
-COPY --from=builder /app/out ./
+# Remove default nginx content
+RUN rm -rf ./*
 
-# Comment out or remove the line for custom nginx config
-# COPY ./nginx.conf /etc/nginx/conf.d/default.conf
+# Copy built static files from builder stage
+COPY --from=builder /app/out/ .
+
+# Create a basic nginx config for SPA routing
+RUN echo 'server { \
+    listen 80; \
+    root /usr/share/nginx/html; \
+    index index.html; \
+    location / { \
+        try_files $uri $uri/ /index.html; \
+    } \
+}' > /etc/nginx/conf.d/default.conf
 
 # Expose port 80
 EXPOSE 80
