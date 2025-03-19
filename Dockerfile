@@ -64,14 +64,32 @@ RUN echo "===== NGINX HTML DIR AFTER COPYING FILES =====" && \
     echo "===== INDEX.HTML CONTENT (if exists) =====" && \
     cat index.html || echo "index.html not found"
 
-# Create a basic nginx config for SPA routing
+# Create a better nginx config for SPA routing that avoids infinite redirects
 RUN echo 'server { \
     listen 80; \
     server_name _; \
     root /usr/share/nginx/html; \
     index index.html; \
+    # Handle static files directly \
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ { \
+        try_files $uri =404; \
+        expires max; \
+        add_header Cache-Control "public, max-age=31536000"; \
+    } \
+    # For everything else, try the URI, then fallback to index.html \
     location / { \
         try_files $uri $uri/ /index.html; \
+    } \
+    # Special error handling for favicon.ico and other common browser requests \
+    location = /favicon.ico { \
+        try_files $uri =404; \
+        access_log off; \
+        log_not_found off; \
+    } \
+    location = /robots.txt { \
+        try_files $uri =404; \
+        access_log off; \
+        log_not_found off; \
     } \
 }' > /etc/nginx/conf.d/default.conf && \
     echo "===== NGINX CONFIG =====" && \
