@@ -1,9 +1,12 @@
 import { NextConfig } from 'next';
 
-const nextConfig: NextConfig = {
-  output: 'export',
+// Create a merged type for Next.js config
+const nextConfig = {
+  // Use standalone output for Docker
+  output: process.env.SKIP_BUILD_STATIC_GENERATION === 'true' ? 'standalone' : 'export',
+  
   images: {
-    unoptimized: true, // Required for static export
+    unoptimized: process.env.SKIP_BUILD_STATIC_GENERATION !== 'true', // Disable image optimization in export mode
     remotePatterns: [
       {
         protocol: "http",
@@ -20,7 +23,9 @@ const nextConfig: NextConfig = {
   poweredByHeader: false, // Remove X-Powered-By header for security
   compress: true, // Enable compression
   productionBrowserSourceMaps: false, // Disable source maps in production
-  /* config options here */
-};
+  
+  // For external packages
+  serverExternalPackages: ['sharp'],
+} satisfies NextConfig;
 
 export default nextConfig;

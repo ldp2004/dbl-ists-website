@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_STRAPI_API_URL=http://backend:1337
+      - STRAPI_API_URL=http://backend:1337
+    depends_on:
+      - backend
+    networks:
+      - dbl-network
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    ports:
+      - "1337:1337"
+    networks:
+      - dbl-network
+    # Add any backend environment variables here
+    environment:
+      - DATABASE_CLIENT=sqlite
+      - DATABASE_FILENAME=.tmp/data.db
+      # Add any other required environment variables
+
+networks:
+  dbl-network:
+    driver: bridge 

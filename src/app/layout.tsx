@@ -39,13 +39,32 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const globalData = await getGlobalData();
+  
+  // Default data for header and footer in case it's not available
+  const headerData = globalData?.data?.attributes?.header || {
+    logoText: { text: "DBL ISTS Inc." },
+    navLink: [
+      { id: 1, text: 'Home', url: '/' },
+      { id: 2, text: 'Services', url: '/services' },
+      { id: 3, text: 'Portfolio', url: '/portfolio' },
+      { id: 4, text: 'About', url: '/about' },
+    ],
+    ctaButton: { text: "Contact Us", url: "/contact" }
+  };
+  
+  const footerData = globalData?.data?.attributes?.footer || {
+    logoText: { text: "DBL ISTS Inc." },
+    externalLink: [],
+    footerText: "© 2024 DBL ISTS Inc. All rights reserved."
+  };
+  
   return (
     <html lang="en">
       <body className={`${inter.variable} ${jetBrainsMono.variable} antialiased`}>
         <ThemeProvider>
-          <Header data={globalData.data.header}/>
+          <Header data={headerData}/>
           {children}
-          <Footer data={globalData.data.footer}/>
+          <Footer data={footerData}/>
         </ThemeProvider>
       </body>
     </html>
