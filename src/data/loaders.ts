@@ -11,15 +11,7 @@ interface NextFetchRequestConfig extends RequestInit {
 
 const baseUrl = getStrapiURL();
 
-// Check if we're in a build environment and should skip data loading
-const isSkipBuild = process.env.SKIP_BUILD_STATIC_GENERATION === 'true';
-
 async function fetchData(url: string) {
-  // Return mock data during build if SKIP_BUILD_STATIC_GENERATION is true
-  if (isSkipBuild) {
-    return { data: {} };
-  }
-
   const authToken = null; // we will implement this later getAuthToken() later
   const headers = {
     method: "GET",
@@ -40,219 +32,222 @@ async function fetchData(url: string) {
     };
     
     const response = await fetch(url, requestConfig);
+    
+    // Check if response is OK before parsing JSON
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status} ${response.statusText}`);
+    }
+    
     const data = await response.json();
     return data;
   } catch (error) {
     console.error("Error fetching data:", error);
-    // Return empty data structure instead of throwing
-    return { data: {} };
+    // Return empty but valid data structures to prevent undefined mapping errors
+    return { 
+      data: { 
+        attributes: { blocks: [] }
+      } 
+    };
   }
 }
 
 export async function getGlobalData() {
-  // Return mock data during build if SKIP_BUILD_STATIC_GENERATION is true
-  if (isSkipBuild) {
-    return {
-      data: {
-        attributes: {
-          header: {
-            logoText: { text: 'DBL Web' },
-            navLink: [
-              { id: 1, text: 'Home', url: '/' },
-              { id: 2, text: 'Services', url: '/services' },
-              { id: 3, text: 'Portfolio', url: '/portfolio' },
-              { id: 4, text: 'About', url: '/about' },
-            ],
-            ctaButton: { text: 'Contact Us', url: '/contact' }
-          },
-          footer: {
-            logoText: { text: 'DBL Web' },
-            externalLink: [
-              { id: 1, text: 'Twitter', url: 'https://twitter.com' },
-              { id: 2, text: 'LinkedIn', url: 'https://linkedin.com' }
-            ],
-            footerText: '© 2024 DBL Web. All rights reserved.'
-          }
+  // Provide fallback data structure
+  const defaultData = {
+    data: {
+      attributes: {
+        header: {
+          logoText: { text: 'DBL Web' },
+          navLink: [
+            { id: 1, text: 'Home', url: '/' },
+            { id: 2, text: 'Services', url: '/services' },
+            { id: 3, text: 'Portfolio', url: '/portfolio' },
+            { id: 4, text: 'About', url: '/about' },
+          ],
+          ctaButton: { text: 'Contact Us', url: '/contact' }
+        },
+        footer: {
+          logoText: { text: 'DBL Web' },
+          externalLink: [
+            { id: 1, text: 'Twitter', url: 'https://twitter.com' },
+            { id: 2, text: 'LinkedIn', url: 'https://linkedin.com' }
+          ],
+          footerText: '© 2024 DBL Web. All rights reserved.'
         }
       }
-    };
+    }
+  };
+
+  try {
+    const url = new URL("/api/global", baseUrl);
+
+    url.search = qs.stringify({
+      populate: [
+        "header.logoText",
+        "header.navLink",
+        "header.ctaButton",
+        "footer.logoText",
+        "footer.externalLink",
+      ],
+    });
+
+    const result = await fetchData(url.href);
+    // Check if result has the expected structure
+    if (!result?.data?.attributes) {
+      console.warn("API returned unexpected data structure for global data");
+      return defaultData;
+    }
+    
+    return result;
+  } catch (error) {
+    console.error("Failed to fetch global data:", error);
+    return defaultData;
   }
-
-  const url = new URL("/api/global", baseUrl);
-
-  url.search = qs.stringify({
-    populate: [
-      "header.logoText",
-      "header.navLink",
-      "header.ctaButton",
-      "footer.logoText",
-      "footer.externalLink",
-    ],
-  });
-
-  return await fetchData(url.href);
 }
 
 export async function getGlobalPageMetadata() {
-  if (isSkipBuild) {
-    return {
-      data: {
-        title: 'DBL Web — Your partner in modernization',
-        description: 'Helping businesses modernize their technology stack'
-      }
-    };
+  const defaultData = {
+    data: {
+      title: 'DBL Web — Your partner in modernization',
+      description: 'Helping businesses modernize their technology stack'
+    }
+  };
+
+  try {
+    const url = new URL("/api/global", baseUrl);
+
+    url.search = qs.stringify({
+      fields: ["title", "description"],
+    });
+
+    const result = await fetchData(url.href);
+    if (!result?.data) {
+      return defaultData;
+    }
+    
+    return result;
+  } catch (error) {
+    console.error("Failed to fetch global metadata:", error);
+    return defaultData;
   }
-
-  const url = new URL("/api/global", baseUrl);
-
-  url.search = qs.stringify({
-    fields: ["title", "description"],
-  });
-
-  return await fetchData(url.href);
 }
 
 export async function getHomePageData() {
-  if (isSkipBuild) {
-    return {
-      data: {
-        attributes: {
-          blocks: []
-        }
-      }
-    };
-  }
+  try {
+    const url = new URL("/api/home-page", baseUrl);
 
-  const url = new URL("/api/home-page", baseUrl);
-
-  url.search = qs.stringify({
-    populate: {
-      blocks: {
-        on: {
-          "layout.hero-section": {
-            populate: {
-              image: {
-                fields: ["url", "alternativeText"],
-              },
-              link: {
-                populate: true,
+    url.search = qs.stringify({
+      populate: {
+        blocks: {
+          on: {
+            "layout.hero-section": {
+              populate: {
+                image: {
+                  fields: ["url", "alternativeText"],
+                },
+                link: {
+                  populate: true,
+                },
               },
             },
-          },
-          "layout.feature-list-section": {
-            populate: {
-              feature: {
-                populate: true,
+            "layout.feature-list-section": {
+              populate: {
+                feature: {
+                  populate: true,
+                },
               },
             },
-          },
-          "layout.feature-section": {
-            populate: {
-              feature: {
-                populate: true,
+            "layout.feature-section": {
+              populate: {
+                feature: {
+                  populate: true,
+                },
               },
             },
           },
         },
       },
-    },
-  });
+    });
 
-  return await fetchData(url.href);
+    return await fetchData(url.href);
+  } catch (error) {
+    console.error("Failed to fetch home page data:", error);
+    return { data: { attributes: { blocks: [] } } };
+  }
 }
 
 export async function getServicePageData() {
-  if (isSkipBuild) {
-    return {
-      data: {
-        attributes: {
-          blocks: []
-        }
-      }
-    };
-  }
+  try {
+    const url = new URL("/api/service-page", baseUrl);
 
-  const url = new URL("/api/service-page", baseUrl);
-
-  url.search = qs.stringify({
-    populate: {
-      blocks: {
-        on: {
-          "layout.hero-section": {
-            populate: {
-              link: {
-                populate: true
-              },
-              heroMedia: {
-                populate: '*'
+    url.search = qs.stringify({
+      populate: {
+        blocks: {
+          on: {
+            "layout.hero-section": {
+              populate: {
+                link: {
+                  populate: true
+                },
+                heroMedia: {
+                  populate: '*'
+                }
               }
-            }
-          },
-          "layout.services-section": {
-            populate: {
-              services: {
-                populate: true
+            },
+            "layout.services-section": {
+              populate: {
+                services: {
+                  populate: true
+                }
               }
-            }
-          },
-          "layout.brand-list-section": {
-            populate: {
-              brands: {
-                populate: '*'
+            },
+            "layout.brand-list-section": {
+              populate: {
+                brands: {
+                  populate: '*'
+                }
               }
             }
           }
         }
       }
-    }
-  });
+    });
 
-  return await fetchData(url.href);
+    return await fetchData(url.href);
+  } catch (error) {
+    console.error("Failed to fetch service page data:", error);
+    return { data: { attributes: { blocks: [] } } };
+  }
 }
 
 export async function getAboutPageData() {
-  if (isSkipBuild) {
-    return {
-      data: {
-        attributes: {
-          blocks: []
-        }
-      }
-    };
-  }
-
-  const url = new URL("/api/about-page", baseUrl);
-
-  url.search = qs.stringify({
-    populate: {
-      blocks: {
-        on: {
-          "layout.feature-section": {
-            populate: {
-              feature: {
-                populate: true,
+  try {
+    const url = new URL("/api/about-page", baseUrl);
+    
+    url.search = qs.stringify({
+      populate: {
+        blocks: {
+          on: {
+            "layout.feature-section": {
+              populate: {
+                feature: {
+                  populate: true,
+                }
               }
             }
           }
         }
       }
-    }
-  });
+    });
 
-  return await fetchData(url.href);
+    return await fetchData(url.href);
+  } catch (error) {
+    console.error("Failed to fetch about page data:", error);
+    return { data: { attributes: { blocks: [] } } };
+  }
 }
 
 export async function getContactPageData() {
-  if (isSkipBuild) {
-    return {
-      data: {
-        attributes: {
-          blocks: []
-        }
-      }
-    };
-  }
-
   const url = new URL("/api/contact-page", baseUrl);
 
   url.search = qs.stringify({
@@ -275,16 +270,6 @@ export async function getContactPageData() {
 }
 
 export async function getPortfolioPageData() {
-  if (isSkipBuild) {
-    return {
-      data: {
-        attributes: {
-          blocks: []
-        }
-      }
-    };
-  }
-
   const url = new URL("/api/portfolio-page", baseUrl);
 
   url.search = qs.stringify({
@@ -304,12 +289,6 @@ export async function getPortfolioPageData() {
 
 // Example function to fetch portfolio items with sorting
 export async function getPortfolioItems() {
-  if (isSkipBuild) {
-    return {
-      data: []
-    };
-  }
-
   const url = new URL("/api/portfolios", baseUrl);
   // Build query with qs
   url.search = qs.stringify({
@@ -329,18 +308,6 @@ export async function getPortfolioItems() {
 
 // Function to fetch a single portfolio item with full details
 export async function getPortfolioItem(id: string) {
-  if (isSkipBuild) {
-    return {
-      data: {
-        attributes: {
-          title: 'Portfolio Item',
-          description: 'This is a sample portfolio item',
-          image: null
-        }
-      }
-    };
-  }
-
   const url = new URL(`/api/portfolios/${id}`, baseUrl);
   
   url.search = qs.stringify({
